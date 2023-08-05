@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <org.opencv.android.JavaCameraView
+        android:id="@+id/cameraView"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginVertical="8dp" />
+
+    <TextView
+        android:id="@+id/txtSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:padding="8dp"
+        android:text="Average Speed: 0.0%"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/txtUpDensity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:padding="8dp"
+        android:text="Up Density Rate: 0.0%"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/txtDownDensity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:padding="8dp"
+        android:text="Down Density Rate: 0.0%"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/txtIsDense"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:padding="8dp"
+        android:text="Is dense region: false"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/txtInJams"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:padding="8dp"
+        android:text="In traffic jams"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+</LinearLayout>
