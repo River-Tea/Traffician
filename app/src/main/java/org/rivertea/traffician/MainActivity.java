@@ -1,13 +1,19 @@
 package org.rivertea.traffician;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -19,6 +25,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -27,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends CameraActivity {
+    private static final int REQUEST_CODE_PICK_VIDEO = 100;
     private static final Integer CAMERA_REQUEST_CODE = 101;
     private static final String TAG = "MainActivity";
     private CameraBridgeViewBase cameraBridgeViewBase;
@@ -47,6 +55,7 @@ public class MainActivity extends CameraActivity {
     }
 
     private void setEvent() {
+        startServer();
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(new CameraBridgeViewBase.CvCameraViewListener2() {
             @Override
@@ -179,5 +188,15 @@ public class MainActivity extends CameraActivity {
         downDensityRate = findViewById(R.id.txtDownDensity);
         speedAverage = findViewById(R.id.txtSpeed);
         isTrafficJams = findViewById(R.id.txtInJams);
+    }
+
+    private void startServer() {
+        Intent serviceIntent = new Intent(this, TrafficianService.class);
+        startService(serviceIntent);
+    }
+
+    private void stopServer() {
+        Intent serviceIntent = new Intent(this, TrafficianService.class);
+        stopService(serviceIntent);
     }
 }
