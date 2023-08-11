@@ -12,25 +12,38 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.AxisBase;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import org.opencv.android.CameraActivity;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.videoio.VideoCapture;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends CameraActivity {
@@ -41,9 +54,12 @@ public class MainActivity extends CameraActivity {
 
     // Optical Flow variables
     private OpticalFlow opticalFlow;
-    TextView isDense, upDensityRate, downDensityRate, speedAverage, isTrafficJams;
+    private Button startButton;
+    private LineChart lineChart;
     double upDensity = 0.0, downDensity = 0.0;
     int countFrames = 0;
+    List<Entry> velocity = new ArrayList<>();
+    List<Entry> density = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +71,6 @@ public class MainActivity extends CameraActivity {
     }
 
     private void setEvent() {
-        startServer();
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(new CameraBridgeViewBase.CvCameraViewListener2() {
             @Override
@@ -89,36 +104,43 @@ public class MainActivity extends CameraActivity {
 
                 // Draw optical flowVector vectors on the frame
                 opticalFlow.drawVectorFlow(rgba);
-                runOnUiThread(() -> {
-                    isDense.setText("Is dense region: " + opticalFlow.isDense());
-                });
+//                runOnUiThread(() -> {
+//                    isDense.setText("Is dense region: " + opticalFlow.isDense());
+//                });
 
                 // Compute density of upward and downward flow vectors
                 Map<String, Double> vectorDirectDensity = opticalFlow.calVectorDensity();
+                long averageSpeed = opticalFlow.calAverageSpeed();
 
                 runOnUiThread(() -> {
+                    int frameMark = 0;
                     if (countFrames <= 30) {
                         countFrames++;
                     } else {
-                        upDensity = vectorDirectDensity.get("UpDensity");
-                        downDensity = vectorDirectDensity.get("DownDensity");
+                        frameMark += countFrames;
+                        upDensity = vectorDirectDensity.get("UpDense");
+                        downDensity = vectorDirectDensity.get("DownDense");
+                        velocity.add(new Entry(frameMark, averageSpeed));
+                        density.add(new Entry(frameMark, (float) downDensity));
                         countFrames = 0;
-                        upDensityRate.setText("Up Density Rate: " + upDensity + "%");
-                        downDensityRate.setText("Down Density Rate: " + downDensity + "%");
+//                        upDensityRate.setText("Up Density Rate: " + upDensity + "%");
+//                        downDensityRate.setText("Down Density Rate: " + downDensity + "%");
+                        drawChart(velocity, density);
                     }
                 });
 
-                // Tính tốc độ trung bình của các xe dựa vào vector flowVector
-                long averageSpeed = opticalFlow.calAverageSpeed();
-                // Hiển thị tốc độ trung bình của các xe lên TextView
-                runOnUiThread(() -> speedAverage.setText("Average Speed: " + averageSpeed));
 
-                // Đánh giá tình trạng kẹt xe
-                runOnUiThread(() -> {
-                    if (opticalFlow.inTrafficJam()) {
-                        isTrafficJams.setVisibility(View.VISIBLE);
-                    } else isTrafficJams.setVisibility(View.GONE);
-                });
+//                // Tính tốc độ trung bình của các xe dựa vào vector flowVector
+//                long averageSpeed = opticalFlow.calAverageSpeed();
+//                // Hiển thị tốc độ trung bình của các xe lên TextView
+//                runOnUiThread(() -> speedAverage.setText("Average Speed: " + averageSpeed));
+//
+//                // Đánh giá tình trạng kẹt xe
+//                runOnUiThread(() -> {
+//                    if (opticalFlow.inTrafficJam()) {
+//                        isTrafficJams.setVisibility(View.VISIBLE);
+//                    } else isTrafficJams.setVisibility(View.GONE);
+//                });
 
                 // Update the previous frame with the current frame
                 opticalFlow.setNextFrame(opticalFlow.getPrevFrame());
@@ -129,6 +151,30 @@ public class MainActivity extends CameraActivity {
 
         if (OpenCVLoader.initDebug()) {
             cameraBridgeViewBase.enableView();
+        }
+    }
+
+    private void drawChart(List<Entry> dataSet1, List<Entry> dataSet2) {
+        LineDataSet lineDataSet1 = new LineDataSet(dataSet1, "Density");
+        LineDataSet lineDataSet2 = new LineDataSet(dataSet2, "Velocity");
+
+        lineDataSet1.setColor(getResources().getColor(R.color.colorAccent)); // Set line color
+        lineDataSet2.setColor(getResources().getColor(R.color.colorPrimary)); // Set line color
+
+        LineData lineData = new LineData(lineDataSet1, lineDataSet2);
+
+        // Customize X-axis labels if needed
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setValueFormatter(new MyXAxisFormatter());
+
+        lineChart.setData(lineData);
+        lineChart.invalidate();
+    }
+
+    private static class MyXAxisFormatter extends ValueFormatter {
+        @Override
+        public String getAxisLabel(float value, AxisBase axis) {
+            return String.valueOf((int) value); // Customize X-axis labels here
         }
     }
 
@@ -183,20 +229,7 @@ public class MainActivity extends CameraActivity {
 
     private void setControl() {
         cameraBridgeViewBase = findViewById(R.id.cameraView);
-        isDense = findViewById(R.id.txtIsDense);
-        upDensityRate = findViewById(R.id.txtUpDensity);
-        downDensityRate = findViewById(R.id.txtDownDensity);
-        speedAverage = findViewById(R.id.txtSpeed);
-        isTrafficJams = findViewById(R.id.txtInJams);
-    }
-
-    private void startServer() {
-        Intent serviceIntent = new Intent(this, TrafficianService.class);
-        startService(serviceIntent);
-    }
-
-    private void stopServer() {
-        Intent serviceIntent = new Intent(this, TrafficianService.class);
-        stopService(serviceIntent);
+        startButton = findViewById(R.id.startButton);
+        lineChart = findViewById(R.id.lineChart);
     }
 }

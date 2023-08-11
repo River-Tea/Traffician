@@ -19,8 +19,8 @@ public class OpticalFlow {
             iterations = 5,
             poly_n = 5,
             flags = 0,
-            stepSize = 8,
-            denseRegionThreshold = 20,
+            stepSize = 10,
+            denseRegionThreshold = 10,
             FRAMES_FOR_AVERAGE_SPEED = 10;
     Mat prevFrame, nextFrame, vectorFlow;
 
@@ -76,13 +76,13 @@ public class OpticalFlow {
                 // Tính độ lớn của mỗi vector flow (tốc độ)
                 double magnitude = Math.sqrt(Math.pow(flowX, 2) + Math.pow(flowY, 2));
 
-                // Kiểm tra xem denseRegionCount có lớn hơn ngưỡng hay không để xác định xem đó có phải là vùng dày đặc hay không
                 if (magnitude > denseRegionThreshold) {
                     denseRegionCount++;
                 }
             }
         }
 
+        // Kiểm tra xem denseRegionCount có lớn hơn ngưỡng hay không để xác định xem đó có phải là vùng dày đặc hay không
         return denseRegionCount > threshold;
     }
 
@@ -113,10 +113,10 @@ public class OpticalFlow {
                 double flowY = flowVector[1];
 
                 // Tính độ lớn của mỗi vector flow (tốc độ)
-                double speed = Math.sqrt(flowX * flowX + flowY * flowY);
+                double magnitude = Math.sqrt(flowX * flowX + flowY * flowY);
 
                 // Tính tốc độ trung bình của các xe dựa vào FRAMES_FOR_AVERAGE_SPEED frames gần nhất
-                totalSpeed += speed;
+                totalSpeed += magnitude;
                 countFrames++;
 
                 if (countFrames >= FRAMES_FOR_AVERAGE_SPEED) {
@@ -174,5 +174,45 @@ public class OpticalFlow {
         directDensity.put("DownDense", downDense * 100);
 
         return directDensity;
+    }
+
+    private void codeTest(Mat[] vector) {
+        // Giả sử vectorFlow là mảng chứa vector flow của Farneback optical flow
+        // Vector flow có cấu trúc: [dx1, dy1, dx2, dy2, ...]
+
+        int totalVectors = vector.length / 2; // Số lượng vector (2 giá trị cho mỗi vector)
+        int countUpward = 0; // Số lượng vector hướng lên
+        int countDownward = 0; // Số lượng vector hướng xuống
+        double sumMagnitudeUpward = 0.0; // Tổng độ lớn vector hướng lên
+        double sumMagnitudeDownward = 0.0; // Tổng độ lớn vector hướng xuống
+
+        for (int i = 0; i < vector.length; i += 2) {
+            double dx = vector[i];
+            double dy = vector[i + 1];
+            double magnitude = Math.sqrt(dx * dx + dy * dy);
+
+            if (dy < 0) { // Vector hướng lên
+                countUpward++;
+                sumMagnitudeUpward += magnitude;
+            } else if (dy > 0) { // Vector hướng xuống
+                countDownward++;
+                sumMagnitudeDownward += magnitude;
+            }
+        }
+
+        // Tính mật độ vector hướng lên và hướng xuống
+        double densityUpward = (double) countUpward / totalVectors;
+        double densityDownward = (double) countDownward / totalVectors;
+
+        // Tính độ lớn trung bình của vector hướng lên và hướng xuống
+        double avgMagnitudeUpward = sumMagnitudeUpward / countUpward;
+        double avgMagnitudeDownward = sumMagnitudeDownward / countDownward;
+
+        // In kết quả
+        System.out.println("Mật độ vector hướng lên: " + densityUpward);
+        System.out.println("Mật độ vector hướng xuống: " + densityDownward);
+        System.out.println("Độ lớn trung bình vector hướng lên: " + avgMagnitudeUpward);
+        System.out.println("Độ lớn trung bình vector hướng xuống: " + avgMagnitudeDownward);
+
     }
 }
