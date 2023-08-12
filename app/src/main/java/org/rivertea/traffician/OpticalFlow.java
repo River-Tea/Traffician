@@ -11,17 +11,19 @@ import java.util.Map;
 
 public class OpticalFlow {
     private static final double
-            pyr_scale = 0.5,
-            poly_sigma = 1.2;
+            PYR_SCALE = 0.5,
+            POLY_SIGMA = 1.2;
     private static final int
-            levels = 3,
-            winSize = 15,
-            iterations = 5,
-            poly_n = 5,
-            flags = 0,
-            stepSize = 10,
+            MIN = 0,
+            LEVELS = 3,
+            WIN_SIZE = 15,
+            ITERATIONS = 5,
+            POLYGON_EDGE = 5,
+            FLAGS = 0,
+            STEP_SIZE = 10,
             denseRegionThreshold = 10,
-            FRAMES_FOR_AVERAGE_SPEED = 10;
+            FRAMES_FOR_AVERAGE_SPEED = 10,
+            THRESHOLD_MAGNITUDE = 10;
     Mat prevFrame, nextFrame, vectorFlow;
 
     public OpticalFlow() {
@@ -59,8 +61,8 @@ public class OpticalFlow {
 
     public Mat calOpticalFlowVector() {
         // Calculate optical flow using Farneback method
-        Video.calcOpticalFlowFarneback(prevFrame, nextFrame, vectorFlow, pyr_scale, levels, winSize,
-                iterations, poly_n, poly_sigma, flags);
+        Video.calcOpticalFlowFarneback(prevFrame, nextFrame, vectorFlow, PYR_SCALE, LEVELS, WIN_SIZE,
+                ITERATIONS, POLYGON_EDGE, POLY_SIGMA, FLAGS);
         return vectorFlow;
     }
 
@@ -68,8 +70,8 @@ public class OpticalFlow {
         int denseRegionCount = 0;
         int threshold = 30;
 
-        for (int y = 0; y < vectorFlow.rows(); y += stepSize) {
-            for (int x = 0; x < vectorFlow.cols(); x += stepSize) {
+        for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
+            for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
                 double[] flowVector = vectorFlow.get(y, x);
                 double flowX = flowVector[0];
                 double flowY = flowVector[1];
@@ -87,8 +89,8 @@ public class OpticalFlow {
     }
 
     public void drawVectorFlow(Mat outputFrame) {
-        for (int y = 0; y < vectorFlow.rows(); y += stepSize) {
-            for (int x = 0; x < vectorFlow.cols(); x += stepSize) {
+        for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
+            for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
                 double[] flowVector = vectorFlow.get(y, x);
                 double flowX = flowVector[0];
                 double flowY = flowVector[1];
@@ -106,8 +108,8 @@ public class OpticalFlow {
         int countFrames = 0;
         int totalSpeed = 0;
 
-        for (int y = 0; y < vectorFlow.rows(); y += stepSize) {
-            for (int x = 0; x < vectorFlow.cols(); x += stepSize) {
+        for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
+            for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
                 double[] flowVector = vectorFlow.get(y, x);
                 double flowX = flowVector[0];
                 double flowY = flowVector[1];
@@ -177,40 +179,37 @@ public class OpticalFlow {
     }
 
     private void codeTest(Mat[] vector) {
-        // Giả sử vectorFlow là mảng chứa vector flow của Farneback optical flow
-        // Vector flow có cấu trúc: [dx1, dy1, dx2, dy2, ...]
+        // Calculate vector flow statistics
+        double upwardDensity = 0;
+        double downwardDensity = 0;
+        double avgMagnitudeUpward = 0;
+        double avgMagnitudeDownward = 0;
+        int totalPoints = vectorFlow.rows() * vectorFlow.cols();
 
-        int totalVectors = vector.length / 2; // Số lượng vector (2 giá trị cho mỗi vector)
-        int countUpward = 0; // Số lượng vector hướng lên
-        int countDownward = 0; // Số lượng vector hướng xuống
-        double sumMagnitudeUpward = 0.0; // Tổng độ lớn vector hướng lên
-        double sumMagnitudeDownward = 0.0; // Tổng độ lớn vector hướng xuống
+        for (int y = 0; y < vectorFlow.rows(); y++) {
+            for (int x = 0; x < vectorFlow.cols(); x++) {
+                double[] flowVector = vectorFlow.get(y, x);
 
-        for (int i = 0; i < vector.length; i += 2) {
-            double dx = vector[i];
-            double dy = vector[i + 1];
-            double magnitude = Math.sqrt(dx * dx + dy * dy);
+                double magnitude = Math.sqrt(flowVector[0] * flowVector[0] + flowVector[1] * flowVector[1]);
 
-            if (dy < 0) { // Vector hướng lên
-                countUpward++;
-                sumMagnitudeUpward += magnitude;
-            } else if (dy > 0) { // Vector hướng xuống
-                countDownward++;
-                sumMagnitudeDownward += magnitude;
+                if (flowVector[1] > 0 && magnitude >= THRESHOLD_MAGNITUDE) {
+                    upwardDensity++;
+                    avgMagnitudeUpward += magnitude;
+                } else {
+                    downwardDensity++;
+                    avgMagnitudeDownward += magnitude;
+                }
             }
         }
 
-        // Tính mật độ vector hướng lên và hướng xuống
-        double densityUpward = (double) countUpward / totalVectors;
-        double densityDownward = (double) countDownward / totalVectors;
-
-        // Tính độ lớn trung bình của vector hướng lên và hướng xuống
-        double avgMagnitudeUpward = sumMagnitudeUpward / countUpward;
-        double avgMagnitudeDownward = sumMagnitudeDownward / countDownward;
+        upwardDensity /= totalPoints;
+        downwardDensity /= totalPoints;
+        avgMagnitudeUpward /= totalPoints;
+        avgMagnitudeDownward /= totalPoints;
 
         // In kết quả
-        System.out.println("Mật độ vector hướng lên: " + densityUpward);
-        System.out.println("Mật độ vector hướng xuống: " + densityDownward);
+        System.out.println("Mật độ vector hướng lên: " + upwardDensity);
+        System.out.println("Mật độ vector hướng xuống: " + downwardDensity);
         System.out.println("Độ lớn trung bình vector hướng lên: " + avgMagnitudeUpward);
         System.out.println("Độ lớn trung bình vector hướng xuống: " + avgMagnitudeDownward);
 
