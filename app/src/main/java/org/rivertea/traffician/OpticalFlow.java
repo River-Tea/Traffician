@@ -7,9 +7,7 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class OpticalFlow {
     private static final double
@@ -21,10 +19,7 @@ public class OpticalFlow {
             ITERATIONS = 5,
             POLYGON_EDGE = 5,
             FLAGS = 0,
-            STEP_SIZE = 10,
-            DENSE_THRESHOLD = 10,
-            FRAMES_FOR_AVERAGE_SPEED = 10,
-            MAGNITUDE_THRESHOLD = 10;
+            STEP_SIZE = 10;
     Mat prevFrame, nextFrame, vectorFlow;
 
     public OpticalFlow() {
@@ -67,28 +62,6 @@ public class OpticalFlow {
         return vectorFlow;
     }
 
-    public boolean isDense() {
-        int denseRegionCount = 0;
-        int threshold = 30;
-
-        for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
-            for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
-                double[] flowVector = vectorFlow.get(y, x);
-                double flowX = flowVector[0];
-                double flowY = flowVector[1];
-                // Tính độ lớn của mỗi vector flow (tốc độ)
-                double magnitude = Math.sqrt(Math.pow(flowX, 2) + Math.pow(flowY, 2));
-
-                if (magnitude > DENSE_THRESHOLD) {
-                    denseRegionCount++;
-                }
-            }
-        }
-
-        // Kiểm tra xem denseRegionCount có lớn hơn ngưỡng hay không để xác định xem đó có phải là vùng dày đặc hay không
-        return denseRegionCount > threshold;
-    }
-
     public void drawVectorFlow(Mat outputFrame) {
         for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
             for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
@@ -103,82 +76,6 @@ public class OpticalFlow {
         }
     }
 
-    public long calAverageSpeed() {
-        // Tính tốc độ trung bình của các xe dựa vào vector flow
-        long averageSpeed = 0;
-        int countFrames = 0;
-        int totalSpeed = 0;
-
-        for (int y = 0; y < vectorFlow.rows(); y += STEP_SIZE) {
-            for (int x = 0; x < vectorFlow.cols(); x += STEP_SIZE) {
-                double[] flowVector = vectorFlow.get(y, x);
-                double flowX = flowVector[0];
-                double flowY = flowVector[1];
-
-                // Tính độ lớn của mỗi vector flow (tốc độ)
-                double magnitude = Math.sqrt(flowX * flowX + flowY * flowY);
-
-                // Tính tốc độ trung bình của các xe dựa vào FRAMES_FOR_AVERAGE_SPEED frames gần nhất
-                totalSpeed += magnitude;
-                countFrames++;
-
-                if (countFrames >= FRAMES_FOR_AVERAGE_SPEED) {
-                    averageSpeed = totalSpeed / countFrames;
-                    countFrames = 0;
-                    totalSpeed = 0;
-                }
-            }
-        }
-
-        return averageSpeed;
-    }
-
-    public boolean inTrafficJam() {
-        return isDense() && calAverageSpeed() <= 5;
-    }
-
-    public Map<String, Double> calVectorDensity() {
-        Map<String, Double> directDensity = new HashMap<>();
-
-        double upwardDensity = 0;
-        double downwardDensity = 0;
-
-        for (int y = 0; y < vectorFlow.rows(); y++) {
-            for (int x = 0; x < vectorFlow.cols(); x++) {
-                double[] flowVector = vectorFlow.get(y, x);
-                double flowX = flowVector[0];
-                double flowY = flowVector[1];
-
-                // Tính độ lớn của mỗi vector flow (tốc độ)
-                double vectorValue = Math.sqrt(flowX * flowX + flowY * flowY);
-
-                if (vectorValue >= 10) {
-                    if (flowY > 0) {
-                        downwardDensity++;
-                    } else if (flowY < 0) {
-                        upwardDensity++;
-                    }
-                }
-            }
-        }
-
-        // Normalize densities by dividing by the total number of pixels
-        int totalPixels = vectorFlow.rows() * vectorFlow.cols();
-        upwardDensity /= totalPixels;
-        downwardDensity /= totalPixels;
-        double totalDense = upwardDensity + downwardDensity;
-        double upDense = upwardDensity / totalDense;
-        double downDense = downwardDensity / totalDense;
-
-        directDensity.put("UpDensity", upwardDensity * 100);
-        directDensity.put("DownDensity", downwardDensity * 100);
-
-        directDensity.put("UpDense", upDense * 100);
-        directDensity.put("DownDense", downDense * 100);
-
-        return directDensity;
-    }
-
     public List<Double> calDensityAndVelocity(int frameCount) {
         // Calculate vector flow statistics
         List<Double> densityAndVelocity = new ArrayList<>();
@@ -186,7 +83,6 @@ public class OpticalFlow {
         double downwardDensity = 0;
         double avgMagnitudeUpward = 0;
         double avgMagnitudeDownward = 0;
-        int totalPoints = vectorFlow.rows() * vectorFlow.cols() / 2;
 
         for (int y = 0; y < vectorFlow.rows(); y++) {
             for (int x = 0; x < vectorFlow.cols(); x++) {
@@ -197,22 +93,20 @@ public class OpticalFlow {
                     angle += 2 * Math.PI;
                 }
 
-                flowVector[0] /= frameCount;
-                flowVector[1] /= frameCount;
+                // Calculate vector value
                 double magnitude = Math.sqrt(flowVector[0] * flowVector[0] + flowVector[1] * flowVector[1]);
 
+                // Classify vector direction and average magnitude
                 if (angle >= 0.25 * Math.PI && angle < 0.75 * Math.PI) {
                     upwardDensity++;
-                    avgMagnitudeUpward = magnitude;
-//                    if (magnitude >= MAGNITUDE_THRESHOLD) {
-//                        avgMagnitudeUpward = magnitude;
-//                    }
+                    if (magnitude >= 10) {
+                        avgMagnitudeUpward = magnitude / frameCount;
+                    }
                 } else if (angle >= 1.25 * Math.PI && angle < 1.75 * Math.PI) {
                     downwardDensity++;
-                    avgMagnitudeDownward = magnitude;
-//                    if (magnitude >= MAGNITUDE_THRESHOLD) {
-//                        avgMagnitudeDownward = magnitude;
-//                    }
+                    if (magnitude >= 10) {
+                        avgMagnitudeDownward = magnitude / frameCount;
+                    }
                 }
             }
         }

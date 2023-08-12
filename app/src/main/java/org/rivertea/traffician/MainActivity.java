@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.SurfaceView;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,8 +13,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.github.mikephil.charting.charts.CombinedChart;
-import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -24,7 +21,6 @@ import com.github.mikephil.charting.data.CombinedData;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import org.opencv.android.CameraActivity;
 import org.opencv.android.CameraBridgeViewBase;
@@ -35,7 +31,6 @@ import org.opencv.core.Mat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class MainActivity extends CameraActivity {
     private static final double DENSITY_THRESHOLD = 100;
@@ -99,6 +94,7 @@ public class MainActivity extends CameraActivity {
                 countFrames++;
                 List<Double> densityAndVelocity = opticalFlow.calDensityAndVelocity(countFrames);
 
+                // Update UI every 20 frames
                 runOnUiThread(() -> {
                     if (countFrames % 20 == 0) {
                         upDensity.add(new BarEntry(countFrames,
@@ -112,15 +108,15 @@ public class MainActivity extends CameraActivity {
                         drawChart(upDensity, upVelocity, upCombinedChart);
                         drawChart(downDensity, downVelocity, downCombinedChart);
                         if (isDense(densityAndVelocity.get(0), densityAndVelocity.get(2))) {
-                            upLaneResult.setText("This lane is dense");
+                            upLaneResult.setText("Up lane is dense");
                         } else {
-                            upLaneResult.setText("This lane is not dense");
+                            upLaneResult.setText("Up lane is not dense");
                         }
 
                         if (isDense(densityAndVelocity.get(1), densityAndVelocity.get(3))) {
-                            downLaneResult.setText("This lane is dense");
+                            downLaneResult.setText("Down lane is dense");
                         } else {
-                            downLaneResult.setText("This lane is not dense");
+                            downLaneResult.setText("Down lane is not dense");
                         }
                     }
                 });
