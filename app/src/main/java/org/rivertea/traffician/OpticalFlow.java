@@ -6,7 +6,9 @@ import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class OpticalFlow {
@@ -14,16 +16,15 @@ public class OpticalFlow {
             PYR_SCALE = 0.5,
             POLY_SIGMA = 1.2;
     private static final int
-            MIN = 0,
             LEVELS = 3,
             WIN_SIZE = 15,
             ITERATIONS = 5,
             POLYGON_EDGE = 5,
             FLAGS = 0,
             STEP_SIZE = 10,
-            denseRegionThreshold = 10,
+            DENSE_THRESHOLD = 10,
             FRAMES_FOR_AVERAGE_SPEED = 10,
-            THRESHOLD_MAGNITUDE = 10;
+            MAGNITUDE_THRESHOLD = 10;
     Mat prevFrame, nextFrame, vectorFlow;
 
     public OpticalFlow() {
@@ -78,7 +79,7 @@ public class OpticalFlow {
                 // Tính độ lớn của mỗi vector flow (tốc độ)
                 double magnitude = Math.sqrt(Math.pow(flowX, 2) + Math.pow(flowY, 2));
 
-                if (magnitude > denseRegionThreshold) {
+                if (magnitude > DENSE_THRESHOLD) {
                     denseRegionCount++;
                 }
             }
@@ -178,40 +179,54 @@ public class OpticalFlow {
         return directDensity;
     }
 
-    private void codeTest(Mat[] vector) {
+    public List<Double> calDensityAndVelocity(int frameCount) {
         // Calculate vector flow statistics
+        List<Double> densityAndVelocity = new ArrayList<>();
         double upwardDensity = 0;
         double downwardDensity = 0;
         double avgMagnitudeUpward = 0;
         double avgMagnitudeDownward = 0;
-        int totalPoints = vectorFlow.rows() * vectorFlow.cols();
+        int totalPoints = vectorFlow.rows() * vectorFlow.cols() / 2;
 
         for (int y = 0; y < vectorFlow.rows(); y++) {
             for (int x = 0; x < vectorFlow.cols(); x++) {
                 double[] flowVector = vectorFlow.get(y, x);
 
+                double angle = Math.atan2(flowVector[0], flowVector[1]);
+                if (angle < 0) {
+                    angle += 2 * Math.PI;
+                }
+
+                flowVector[0] /= frameCount;
+                flowVector[1] /= frameCount;
                 double magnitude = Math.sqrt(flowVector[0] * flowVector[0] + flowVector[1] * flowVector[1]);
 
-                if (flowVector[1] > 0 && magnitude >= THRESHOLD_MAGNITUDE) {
+                if (angle >= 0.25 * Math.PI && angle < 0.75 * Math.PI) {
                     upwardDensity++;
-                    avgMagnitudeUpward += magnitude;
-                } else {
+                    avgMagnitudeUpward = magnitude;
+//                    if (magnitude >= MAGNITUDE_THRESHOLD) {
+//                        avgMagnitudeUpward = magnitude;
+//                    }
+                } else if (angle >= 1.25 * Math.PI && angle < 1.75 * Math.PI) {
                     downwardDensity++;
-                    avgMagnitudeDownward += magnitude;
+                    avgMagnitudeDownward = magnitude;
+//                    if (magnitude >= MAGNITUDE_THRESHOLD) {
+//                        avgMagnitudeDownward = magnitude;
+//                    }
                 }
             }
         }
 
-        upwardDensity /= totalPoints;
-        downwardDensity /= totalPoints;
-        avgMagnitudeUpward /= totalPoints;
-        avgMagnitudeDownward /= totalPoints;
+        double totalDensity = upwardDensity + downwardDensity;
+        upwardDensity /= totalDensity;
+        downwardDensity /= totalDensity;
 
-        // In kết quả
-        System.out.println("Mật độ vector hướng lên: " + upwardDensity);
-        System.out.println("Mật độ vector hướng xuống: " + downwardDensity);
-        System.out.println("Độ lớn trung bình vector hướng lên: " + avgMagnitudeUpward);
-        System.out.println("Độ lớn trung bình vector hướng xuống: " + avgMagnitudeDownward);
+        // Lưu kết quả
+        densityAndVelocity.add(upwardDensity);
+        densityAndVelocity.add(downwardDensity);
+        densityAndVelocity.add(avgMagnitudeUpward);
+        densityAndVelocity.add(avgMagnitudeDownward);
 
+        return densityAndVelocity;
     }
 }
