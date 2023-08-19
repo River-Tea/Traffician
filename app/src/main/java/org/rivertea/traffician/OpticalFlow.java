@@ -7,7 +7,10 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class OpticalFlow {
     private static final double
@@ -21,6 +24,8 @@ public class OpticalFlow {
             FLAGS = 0,
             STEP_SIZE = 10;
     Mat prevFrame, nextFrame, vectorFlow;
+    Map<String, Double> densityAndVelocity = new HashMap<>();
+
 
     public OpticalFlow() {
     }
@@ -76,13 +81,12 @@ public class OpticalFlow {
         }
     }
 
-    public List<Double> calDensityAndVelocity(int frameCount) {
+    public Map<String, Double> calDensityAndVelocity() {
         // Calculate vector flow statistics
-        List<Double> densityAndVelocity = new ArrayList<>();
-        double upwardDensity = 0;
-        double downwardDensity = 0;
-        double avgMagnitudeUpward = 0;
-        double avgMagnitudeDownward = 0;
+        double firstDensity = 0;
+        double secondDensity = 0;
+        double firstMagnitudeAVG = 0;
+        double secondMagnitudeAVG = 0;
 
         for (int y = 0; y < vectorFlow.rows(); y++) {
             for (int x = 0; x < vectorFlow.cols(); x++) {
@@ -97,29 +101,30 @@ public class OpticalFlow {
                 double magnitude = Math.sqrt(flowVector[0] * flowVector[0] + flowVector[1] * flowVector[1]);
 
                 // Classify vector direction and average magnitude
-                if (angle >= 0.25 * Math.PI && angle < 0.75 * Math.PI) {
-                    upwardDensity++;
-                    if (magnitude >= 10) {
-                        avgMagnitudeUpward = magnitude / frameCount;
-                    }
-                } else if (angle >= 1.25 * Math.PI && angle < 1.75 * Math.PI) {
-                    downwardDensity++;
-                    if (magnitude >= 10) {
-                        avgMagnitudeDownward = magnitude / frameCount;
+                if (magnitude >= 5) {
+                    if (angle >= 0.25 * Math.PI && angle < 0.75 * Math.PI) {
+                        firstDensity++;
+                        firstMagnitudeAVG += magnitude;
+                    } else if (angle >= 1.25 * Math.PI && angle < 1.75 * Math.PI) {
+                        secondDensity++;
+                        secondMagnitudeAVG += magnitude;
                     }
                 }
             }
         }
 
-        double totalDensity = upwardDensity + downwardDensity;
-        upwardDensity /= totalDensity;
-        downwardDensity /= totalDensity;
-
-        // Lưu kết quả
-        densityAndVelocity.add(upwardDensity);
-        densityAndVelocity.add(downwardDensity);
-        densityAndVelocity.add(avgMagnitudeUpward);
-        densityAndVelocity.add(avgMagnitudeDownward);
+        long totalLanePixels;
+        totalLanePixels = vectorFlow.total();
+        if (firstDensity != 0 && secondDensity != 0 && firstMagnitudeAVG != 0 && secondMagnitudeAVG != 0) {
+            firstMagnitudeAVG /= firstDensity;
+            firstDensity /= totalLanePixels;
+            secondMagnitudeAVG /= secondDensity;
+            secondDensity /= totalLanePixels;
+            densityAndVelocity.put("First Density", firstDensity * 100);
+            densityAndVelocity.put("First Velocity", firstMagnitudeAVG);
+            densityAndVelocity.put("Second Density", secondDensity * 100);
+            densityAndVelocity.put("Second Velocity", secondMagnitudeAVG);
+        }
 
         return densityAndVelocity;
     }

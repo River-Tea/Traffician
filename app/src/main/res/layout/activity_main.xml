@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -19,6 +18,7 @@
         android:layout_height="match_parent">
 
         <LinearLayout
+            android:id="@+id/firstLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -30,12 +30,30 @@
                 android:layout_marginHorizontal="8dp"
                 android:layout_marginVertical="8dp" />
 
-            <TextView
-                android:id="@+id/upLaneResult"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="8dp"
-                android:layout_marginVertical="8dp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/upLaneResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="8dp"
+                    android:layout_marginVertical="8dp"
+                    android:layout_weight="1"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="8dp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/upExport"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Export Lane Data" />
+            </LinearLayout>
 
             <com.github.mikephil.charting.charts.CombinedChart
                 android:id="@+id/downCombinedChart"
@@ -44,12 +62,31 @@
                 android:layout_marginHorizontal="8dp"
                 android:layout_marginVertical="8dp" />
 
-            <TextView
-                android:id="@+id/downLaneResult"
+            <LinearLayout
+                android:id="@+id/secondLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="8dp"
-                android:layout_marginVertical="8dp" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/downLaneResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="8dp"
+                    android:layout_marginVertical="8dp"
+                    android:layout_weight="1"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="8dp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/downExport"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Export Lane Data" />
+            </LinearLayout>
+
         </LinearLayout>
 
     </ScrollView>

@@ -6,6 +6,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -31,21 +34,25 @@ import org.opencv.core.Mat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends CameraActivity {
-    private static final double DENSITY_THRESHOLD = 100;
-    private static final double VELOCITY_THRESHOLD = 100;
+    private static final double PERCENTAGE_25 = 25;
+    private static final double PERCENTAGE_50 = 50;
+    private static final double PERCENTAGE_75 = 75;
     private static final Integer CAMERA_REQUEST_CODE = 101;
     private static final String TAG = "MainActivity";
     private CameraBridgeViewBase cameraBridgeViewBase;
 
     // Optical Flow variables
+    private LinearLayout firstLay, secLay;
     private OpticalFlow opticalFlow;
-    private CombinedChart upCombinedChart, downCombinedChart;
+    private CombinedChart firstCombinedChart, secondCombinedChart;
     private TextView upLaneResult, downLaneResult;
+    private Button exportUpLaneBtn, exportDownLanBtn;
     int countFrames = 0;
-    List<BarEntry> upDensity = new ArrayList<>(), downDensity = new ArrayList<>();
-    List<Entry> upVelocity = new ArrayList<>(), downVelocity = new ArrayList<>();
+    List<BarEntry> firstDensity = new ArrayList<>(), secondDensity = new ArrayList<>();
+    List<Entry> firstVelocity = new ArrayList<>(), secondVelocity = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,31 +99,66 @@ public class MainActivity extends CameraActivity {
                 opticalFlow.drawVectorFlow(rgba);
 
                 countFrames++;
-                List<Double> densityAndVelocity = opticalFlow.calDensityAndVelocity(countFrames);
+                opticalFlow.calDensityAndVelocity();
+                Map<String, Double> densityAndVelocity = opticalFlow.calDensityAndVelocity();
 
-                // Update UI every 20 frames
+                // Update UI every 10 frames
                 runOnUiThread(() -> {
-                    if (countFrames % 20 == 0) {
-                        upDensity.add(new BarEntry(countFrames,
-                                Float.parseFloat(String.valueOf(densityAndVelocity.get(0)))));
-                        downDensity.add(new BarEntry(countFrames,
-                                Float.parseFloat(String.valueOf(densityAndVelocity.get(1)))));
-                        upVelocity.add(new Entry(countFrames,
-                                Float.parseFloat(String.valueOf(densityAndVelocity.get(2)))));
-                        downVelocity.add(new Entry(countFrames,
-                                Float.parseFloat(String.valueOf(densityAndVelocity.get(3)))));
-                        drawChart(upDensity, upVelocity, upCombinedChart);
-                        drawChart(downDensity, downVelocity, downCombinedChart);
-                        if (isDense(densityAndVelocity.get(0), densityAndVelocity.get(2))) {
-                            upLaneResult.setText("Up lane is dense");
-                        } else {
-                            upLaneResult.setText("Up lane is not dense");
-                        }
+                    if (countFrames % 5 == 0) {
+                        firstDensity.add(new BarEntry(countFrames,
+                                Float.parseFloat(String.valueOf(densityAndVelocity.get("First Density")))));
+                        firstVelocity.add(new BarEntry(countFrames,
+                                Float.parseFloat(String.valueOf(densityAndVelocity.get("First Velocity")))));
+                        secondDensity.add(new BarEntry(countFrames,
+                                Float.parseFloat(String.valueOf(densityAndVelocity.get("Second Density")))));
+                        secondVelocity.add(new BarEntry(countFrames,
+                                Float.parseFloat(String.valueOf(densityAndVelocity.get("Second Velocity")))));
 
-                        if (isDense(densityAndVelocity.get(1), densityAndVelocity.get(3))) {
-                            downLaneResult.setText("Down lane is dense");
-                        } else {
-                            downLaneResult.setText("Down lane is not dense");
+                        drawChart(firstDensity, firstVelocity, firstCombinedChart);
+                        drawChart(secondDensity, secondVelocity, secondCombinedChart);
+                        int firstResult = isDense(densityAndVelocity.get("First Density"), densityAndVelocity.get("First Velocity"));
+                        int secondResult = isDense(densityAndVelocity.get("Second Density"), densityAndVelocity.get("Second Velocity"));
+                        switch (firstResult) {
+                            case 0:
+                                upLaneResult.setText("Light Traffic");
+                                upLaneResult.setTextColor(Color.GREEN);
+                                upLaneResult.setBackgroundResource(R.drawable.green_bg_color);
+                                break;
+                            case 25:
+                                upLaneResult.setText("Moderate Traffic");
+                                upLaneResult.setTextColor(Color.parseColor("#E7B10A"));
+                                upLaneResult.setBackgroundResource(R.drawable.yellow_bg_color);
+                                break;
+                            case 75:
+                                upLaneResult.setText("Heavy Traffic");
+                                upLaneResult.setTextColor(Color.parseColor("#F86F03"));
+                                upLaneResult.setBackgroundResource(R.drawable.orange_bg_color);
+                                break;
+                            default:
+                                upLaneResult.setText("Gridlock");
+                                upLaneResult.setTextColor(Color.RED);
+                                upLaneResult.setBackgroundResource(R.drawable.red_bg_color);
+                        }
+                        switch (secondResult) {
+                            case 0:
+                                downLaneResult.setText("Light Traffic");
+                                downLaneResult.setTextColor(Color.GREEN);
+                                downLaneResult.setBackgroundResource(R.drawable.green_bg_color);
+                                break;
+                            case 25:
+                                downLaneResult.setText("Moderate Traffic");
+                                upLaneResult.setTextColor(Color.parseColor("#E7B10A"));
+                                upLaneResult.setBackgroundResource(R.drawable.yellow_bg_color);
+                                break;
+                            case 75:
+                                downLaneResult.setText("Heavy Traffic");
+                                downLaneResult.setTextColor(Color.parseColor("#F86F03"));
+                                downLaneResult.setBackgroundResource(R.drawable.orange_bg_color);
+                                break;
+                            default:
+                                downLaneResult.setText("Gridlock");
+                                downLaneResult.setTextColor(Color.RED);
+                                downLaneResult.setBackgroundResource(R.drawable.red_bg_color);
                         }
                     }
                 });
@@ -128,17 +170,28 @@ public class MainActivity extends CameraActivity {
             }
         });
 
+        exportUpLaneBtn.setOnClickListener(view -> {
+//            exportData();
+        });
+
+        exportDownLanBtn.setOnClickListener(view -> {
+//            exportData();
+        });
+
         if (OpenCVLoader.initDebug()) {
             cameraBridgeViewBase.enableView();
         }
     }
 
-    private boolean isDense(double density, double velocity) {
-        if (density >= 0.5) {
-            return !(velocity >= 0.5);
-        } else {
-            return velocity >= 0.5;
-        }
+    private int isDense(double density, double velocity) {
+        double dense = (density + velocity) / 2;
+        if (dense >= PERCENTAGE_75) {
+            return 75;
+        } else if (dense >= PERCENTAGE_50) {
+            return 50;
+        } else if (dense >= PERCENTAGE_25) {
+            return 25;
+        } else return 0;
     }
 
     private void setupCombinedChart(CombinedChart combinedChart) {
@@ -153,12 +206,12 @@ public class MainActivity extends CameraActivity {
         combinedChart.setDragEnabled(true);
 
         // Set the visible range of data
-        combinedChart.setVisibleXRangeMinimum(100);
-        combinedChart.setVisibleXRangeMaximum(400);
+        combinedChart.setVisibleXRangeMinimum(1);
+        combinedChart.setVisibleXRangeMaximum(100);
 
         XAxis xAxis = combinedChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setGranularity(20f);
+        xAxis.setGranularity(5f);
 
         combinedChart.getAxisRight().setEnabled(false);
     }
@@ -169,9 +222,9 @@ public class MainActivity extends CameraActivity {
 
         LineDataSet lineDataSet = new LineDataSet(velocityData, "Velocity");
         lineDataSet.setColor(Color.RED);
-        lineDataSet.setLineWidth(10f);
+        lineDataSet.setLineWidth(4f);
         lineDataSet.setCircleColor(Color.RED);
-        lineDataSet.setCircleRadius(4f);
+        lineDataSet.setCircleRadius(2f);
 
         BarData barData = new BarData(barDataSet);
         LineData lineData = new LineData(lineDataSet);
@@ -182,6 +235,11 @@ public class MainActivity extends CameraActivity {
 
         combinedChart.setData(combinedData);
         combinedChart.invalidate();
+    }
+
+    public void exportData(StringBuilder data) {
+        ExportData exportData = new ExportData();
+        exportData.setExportData(data);
     }
 
     void getPermission() {
@@ -235,11 +293,15 @@ public class MainActivity extends CameraActivity {
 
     private void setControl() {
         cameraBridgeViewBase = findViewById(R.id.cameraView);
-        upCombinedChart = findViewById(R.id.upCombinedChart);
-        downCombinedChart = findViewById(R.id.downCombinedChart);
-        setupCombinedChart(upCombinedChart);
-        setupCombinedChart(downCombinedChart);
+        firstCombinedChart = findViewById(R.id.upCombinedChart);
+        secondCombinedChart = findViewById(R.id.downCombinedChart);
+        setupCombinedChart(firstCombinedChart);
+        setupCombinedChart(secondCombinedChart);
         upLaneResult = findViewById(R.id.upLaneResult);
         downLaneResult = findViewById(R.id.downLaneResult);
+        exportUpLaneBtn = findViewById(R.id.upExport);
+        exportDownLanBtn = findViewById(R.id.downExport);
+        firstLay = findViewById(R.id.firstLayout);
+        secLay = findViewById(R.id.secondLayout);
     }
 }
